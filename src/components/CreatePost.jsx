@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../supabase-client";
 import { useAuth } from "../context/AuthContext";
 
 // helper to create a post + upload image
@@ -19,7 +19,15 @@ const createPost = async (post, imageFile) => {
 
   const { data, error } = await supabase
     .from("posts")
-    .insert({ ...post, image_url: publicURLData.publicUrl });
+    .insert({
+      title: post.title,
+      content: post.content,
+      avatar_url: post.avatar_url, // if you have this column
+      image_url: publicURLData.publicUrl,
+      user_id: post.user_id, // *** important ***
+    })
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
 
@@ -39,13 +47,14 @@ export const CreatePost = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!selectedFile) return;
+    if (!selectedFile || !user) return;
 
     mutate({
       post: {
         title,
         content,
-        avatar_url: user?.user_metadata?.avatar_url || null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+        user_id: user.id, // *** attach owner id ***
       },
       imageFile: selectedFile,
     });
@@ -107,7 +116,7 @@ export const CreatePost = () => {
         {isPending ? "Creating..." : "Create Post"}
       </button>
 
-      {isError && <p className="text-red-500">Error creating post.</p>}
+      {isError && <p className="text-red-500 mt-2">Error creating post.</p>}
     </form>
   );
 };
